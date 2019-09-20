@@ -624,7 +624,7 @@ namespace ExtUI {
     }
 
     void setAxisMaxJerk_mm_s(const float value, const axis_t axis) {
-      planner.set_max_jerk(axis, value);
+      planner.set_max_jerk((AxisEnum)axis, value);
     }
 
     void setAxisMaxJerk_mm_s(const float value, const extruder_t) {
