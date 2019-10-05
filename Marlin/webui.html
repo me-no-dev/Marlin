@@ -1,0 +1,661 @@
+<html>
+
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.0/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flot/0.8.3/jquery.flot.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flot/0.8.3/jquery.flot.navigate.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.0/jquery-ui.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" />
+</head>
+
+<body>
+    <style>
+        .disabledbutton {
+            pointer-events: none;
+            opacity: 0.4;
+        }
+        
+        #rawgCode {
+            margin-bottom: 10px;
+        }
+        
+        #eStop {
+            display: block;
+            margin: 30px auto;
+            -webkit-filter: grayscale(70%);
+            /* Chrome, Safari, Opera */
+            filter: grayscale(70%);
+        }
+        
+        #eStop:hover {
+            cursor: pointer;
+            -webkit-filter: grayscale(0%);
+            /* Chrome, Safari, Opera */
+            filter: grayscale(0%);
+        }
+        
+        .topBar {
+            background: rgb(255, 255, 255);
+            /* Old browsers */
+            background: -moz-linear-gradient(left, rgba(255, 255, 255, 1) 50%, rgba(255, 255, 255, 1) 50%, rgba(255, 255, 255, 1) 50%, rgba(226, 226, 226, 1) 100%);
+            /* FF3.6-15 */
+            background: -webkit-linear-gradient(left, rgba(255, 255, 255, 1) 50%, rgba(255, 255, 255, 1) 50%, rgba(255, 255, 255, 1) 50%, rgba(226, 226, 226, 1) 100%);
+            /* Chrome10-25,Safari5.1-6 */
+            background: linear-gradient(to right, rgba(255, 255, 255, 1) 50%, rgba(255, 255, 255, 1) 50%, rgba(255, 255, 255, 1) 50%, rgba(226, 226, 226, 1) 100%);
+            /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+            filter: progid: DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#e2e2e2', GradientType=1);
+            /* IE6-9 */
+            border: 1px solid #c5c5c5;
+            margin-bottom: 10px;
+        }
+        
+        #controls {
+            /*
+   -webkit-filter: grayscale(100%);
+   filter: grayscale(100%);
+   pointer-events:none;
+*/
+        }
+        
+        .homeIt {
+            margin-bottom: 4px;
+        }
+        
+        .jogdial {
+            min-width: 30px;
+            min-height: 26px;
+            padding: 0px;
+            border-radius: 0px !important;
+            margin-bottom: 1px;
+            font-size: 10px;
+        }
+        
+        .jogitem {
+            text-align: center;
+        }
+        
+        .controlBox {
+            border: 2px solid #b3b3b3;
+            padding: 0px 0px 10px 0px;
+            margin-bottom: 10px;
+        }
+        
+        #movement {
+            background: #d9edf7;
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #b3b3b3;
+        }
+        
+        #mainPage {
+            margin-top: 10px;
+        }
+        
+        .unkPos {
+            color: #ff0000;
+        }
+        
+        #gCodeLog {
+            min-height: 104px;
+            max-height: 104px;
+            border: 1px solid #b3b3b3;
+            margin-bottom: 2px;
+            background: #e6f9ff;
+            padding: 2px 10px;
+            overflow: auto;
+            color: #000000;
+            font-size: 10px;
+        }
+        
+        span.ui-slider-handle.ui-corner-all.ui-state-default {
+            background: #337ab7;
+        }
+        
+        #fanSlider, #speedSlider {
+            background: #e6f9ff;
+        }
+    </style>
+
+    <div id="mainPage" class="container-fluid">
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="hero-unit topBar">
+
+                    <div class="col-xs-12 col-md-4"></div>
+                    <div class="col-xs-12 col-md-4">
+                        <h1 style="text-align: center;">Malyan M200 3D Printer</h1>
+
+                        <div style="text-align: center; max-width: 400px; margin:10px auto;">
+                            <strong>Print Status: <span id="stat">N/A</span></strong>
+                            <div class="progress" style="margin-bottom: 10px; height: 30px;border: 1px solid #b3b3b3;">
+                                <div class="progress-bar progress-bar-striped active" role="progressbar" id="pgs" style="padding-top: 4px;"></div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <button class="btn btn-success btn-block" type="button" onclick="start_p()"><i class="fa fa-check"></i> Start Print</button>
+                                </div>
+                                <div class="col-md-6">
+                                    <button class="btn btn-danger btn-block" type="button" onclick="cancel_p()"><i class="fa fa-ban"></i> Cancel Print</button>
+                                </div>
+                            </div>
+                            <div class="clearfix"></div>
+
+                        </div>
+
+                    </div>
+                    <div class="col-xs-12 col-md-4" style="text-align: center;"><img src="http://mpselectmini.com/mpselect/webui/estop.png" id="eStop" class=""></div>
+                    <div class="clearfix"></div>
+                </div>
+
+                <div class="row" id="controls" disabled>
+                    <div class="col-md-6">
+
+                        <div class="col-xs-12" style="text-align: center; margin-bottom: 10px; margin-top: 10px; min-height: 32px;">
+                            <div class="col-xs-3"><strong>Print Speed: <span id="speedAmount" style="border: 3px solid #b3b3b3; padding: 6px; border-radius: 2px; margin-right: 10px;">100%</span></strong></div>
+                            <div class="col-xs-9">
+                                <div id="speedSlider"></div>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+
+                        <div class="col-xs-12" style="text-align: center; margin-bottom: 10px; margin-top: 10px; min-height: 32px;">
+                            <div class="col-xs-3"><strong>Fan Speed: <span id="fanAmount"style="border: 3px solid #b3b3b3; padding: 6px; border-radius: 2px; margin-right: 10px;">Off</span></strong></div>
+                            <div class="col-xs-9">
+                                <div id="fanSlider"></div>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+
+                        <div class="col-xs-12 controlBox">
+                            <div class="col-xs-12" id="movement">Movement</div>
+                            <div class="col-xs-10">
+
+                                <div class="col-xs-1 jogitem">
+                                    <button class="btn btn-danger homeIt" data-axis="X" data-id="X0"><i class="fa fa-home"></i> X</button><br>
+                                    <input id="posX" type="text" disabled value="0" placeholder="?" class="unkPos" style="width: 48px;">
+                                </div>
+                                <div class="col-xs-10 jogitem" style="left: 2px;">
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="Y" data-id="500"><i class="fa fa-chevron-up"></i><br>50</button><br>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="Y" data-id="100"><i class="fa fa-chevron-up"></i><br>10</button><br>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="Y" data-id="10"><i class="fa fa-chevron-up"></i><br>1</button><br>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="Y" data-id="1"><i class="fa fa-chevron-up"></i><br>0.1</button><br>
+                                </div>
+                                <div class="col-xs-1 jogitem">
+                                    <button class="btn btn-success homeIt" data-axis="Y" data-id="Y0"><i class="fa fa-home"></i> Y</button><br>
+                                    <input id="posY" type="text" disabled value="0" placeholder="?" class="unkPos" style="width: 48px;">
+                                </div>
+                                <div class="clearfix"></div>
+
+                                <div class="col-xs-12 jogitem">
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="X" data-id="-500"><i class="fa fa-chevron-left"></i> 50</button>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="X" data-id="-100"><i class="fa fa-chevron-left"></i> 10</button>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="X" data-id="-10"><i class="fa fa-chevron-left"></i> 1</button>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="X" data-id="-1"><i class="fa fa-chevron-left"></i> 0.1</button>
+
+                                    <button class="btn btn-info jogdial homeIt" data-axis="XY" data-id="X0 Y0" style="font-size: 20px;"><i class="fa fa-home"></i></button>
+
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="X" data-id="1"><i class="fa fa-chevron-right"></i> 0.1</button>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="X" data-id="10"><i class="fa fa-chevron-right"></i> 1</button>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="X" data-id="100"><i class="fa fa-chevron-right"></i> 10</button>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="X" data-id="500"><i class="fa fa-chevron-right"></i> 50</button>
+                                </div>
+                                <div class="clearfix"></div>
+
+                                <div class="col-xs-1 jogitem" style="min-height: 108px;">
+                                    <button class="btn btn-info homeIt" data-axis="XYZ" data-id="X0 Y0 Z0" style="position: absolute; bottom: 0; left: 0px;"><i class="fa fa-home"></i> All</button>
+                                </div>
+                                <div class="col-xs-10 jogitem" style="left: 2px;">
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="Y" data-id="-1"><i class="fa fa-chevron-down"></i><br>0.1</button><br>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="Y" data-id="-10"><i class="fa fa-chevron-down"></i><br>1</button><br>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="Y" data-id="-100"><i class="fa fa-chevron-down"></i><br>10</button><br>
+                                    <button class="btn btn-info jogdial moveIt" data-speed="F2400" data-axis="Y" data-id="-500"><i class="fa fa-chevron-down"></i><br>50</button><br>
+                                </div>
+                                <div class="col-xs-1 jogitem" style="min-height: 108px;">
+                                    <button class="btn btn-primary homeIt" data-axis="Z" data-id="Z0" style="position: absolute; bottom: 0; right: 0px;"><i class="fa fa-home"></i> Z</button>
+                                    <input id="posZ" type="text" disabled value="0" placeholder="?" class="unkPos" style="width: 48px; position: absolute; bottom: 42px; right: 0px;">
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+
+                            <div class="col-xs-1 jogitem">
+                                <button class="btn btn-primary jogdial moveIt" data-speed="F2400" data-axis="Z" data-id="500"><i class="fa fa-chevron-up"></i><br>50</button><br>
+                                <button class="btn btn-primary jogdial moveIt" data-speed="F2400" data-axis="Z" data-id="100"><i class="fa fa-chevron-up"></i><br>10</button><br>
+                                <button class="btn btn-primary jogdial moveIt" data-speed="F2400" data-axis="Z" data-id="10"><i class="fa fa-chevron-up"></i><br>1</button><br>
+                                <button class="btn btn-primary jogdial moveIt" data-speed="F2400" data-axis="Z" data-id="1"><i class="fa fa-chevron-up"></i><br>0.1</button><br>
+
+                                <button class="btn btn-primary jogdial homeIt" data-axis="Z" data-id="Z0" style="font-size: 20px;"><i class="fa fa-home"></i></button><br>
+
+                                <button class="btn btn-primary jogdial moveIt" data-speed="F2400" data-axis="Z" data-id="-1"><i class="fa fa-chevron-down"></i><br>0.1</button><br>
+                                <button class="btn btn-primary jogdial moveIt" data-speed="F2400" data-axis="Z" data-id="-10"><i class="fa fa-chevron-down"></i><br>1</button><br>
+                                <button class="btn btn-primary jogdial moveIt" data-speed="F2400" data-axis="Z" data-id="-100"><i class="fa fa-chevron-down"></i><br>10</button><br>
+                                <button class="btn btn-primary jogdial moveIt" data-speed="F2400" data-axis="Z" data-id="-500"><i class="fa fa-chevron-down"></i><br>50</button><br>
+                            </div>
+
+                            <div class="col-xs-1 jogitem">
+                                <button class="btn btn-warning jogdial moveIt" data-axis="A" data-speed="F250" data-id="-1000"><i class="fa fa-chevron-up"></i><br>-100</button><br>
+                                <button class="btn btn-warning jogdial moveIt" data-axis="A" data-speed="F250" data-id="-500"><i class="fa fa-chevron-up"></i><br>-50</button><br>
+                                <button class="btn btn-warning jogdial moveIt" data-axis="A" data-speed="F250" data-id="-100"><i class="fa fa-chevron-up"></i><br>-10</button><br>
+                                <button class="btn btn-warning jogdial moveIt" data-axis="A" data-speed="F250" data-id="-10"><i class="fa fa-chevron-up"></i><br>-1</button><br>
+                                <button class="btn btn-warning jogdial" style="font-size: 20px;"><i class="fa fa-times"></i></button><br>
+                                <button class="btn btn-warning jogdial moveIt" data-axis="A" data-speed="F100" data-id="10"><i class="fa fa-chevron-down"></i><br>1</button><br>
+                                <button class="btn btn-warning jogdial moveIt" data-axis="A" data-speed="F100" data-id="100"><i class="fa fa-chevron-down"></i><br>10</button><br>
+                                <button class="btn btn-warning jogdial moveIt" data-axis="A" data-speed="F100" data-id="500"><i class="fa fa-chevron-down"></i><br>50</button><br>
+                                <button class="btn btn-warning jogdial moveIt" data-axis="A" data-speed="F100" data-id="1000"><i class="fa fa-chevron-down"></i><br>100</button><br>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+
+                        <div id="gCodeLog" class="col-xs-12 "></div>
+                        <div id="rawgCode" class="col-xs-12 input-group">
+                            <input class="form-control" type="text" name="gcode" id="gcode" placeholder="Send gCode to printer..."><span class="input-group-btn"><button id="sendRAWgCode" class="btn btn-warning"><i class="fa fa-send" aria-hidden="true"></i> Send</button></span>
+                        </div>
+                        <div class="clearfix"></div>
+
+                    </div>
+                    <div class="col-md-6">
+
+                        <div class="col-xs-12" style="text-align: center; margin-bottom: 6px;">
+                            <strong>Extruder</strong> Temp: <strong><span id="rde" style="border: 3px solid #b3b3b3; padding: 6px; border-radius: 2px; margin-right: 10px;">N/A</span></strong> Target: <strong><span id="rdeTarget" style="border: 3px solid #b3b3b3; padding: 6px; border-radius: 2px; margin-right: 10px;">N/A</span></strong>
+                            <span class="">
+                                <input class="form-control" type="text" id="wre" placeholder="Set Extruder Temp" style="max-width: 160px; display: inline-block;"/>
+                                <button class="btn btn-success" id="sete" style="height: 34px;"><i class="fa fa-check"></i></button>
+                                <button class="btn btn-danger" id="clre" style="height: 34px;"><i class="fa fa-ban"></i></button>
+                            </span>
+                        </div>
+                        <div class="clearfix"></div>
+                        <div id="tempChart" style="height: 210px;"></div>
+                        <div class="clearfix"></div>
+
+                        <hr>
+
+                        <div class="col-xs-12" style="text-align: center; margin-bottom: 6px;">
+                            <strong>Build Platform</strong> Temp: <strong><span id="rdp" style="border: 3px solid #b3b3b3; padding: 6px; border-radius: 2px; margin-right: 10px;">N/A</span></strong> Target: <strong><span id="rdpTarget" style="border: 3px solid #b3b3b3; padding: 6px; border-radius: 2px; margin-right: 10px;">N/A</span></strong>
+                            <span class="">
+                                <input class="form-control" type="text" id="wrp" placeholder="Set Platform Temp" style="max-width: 160px; display: inline-block;"/>
+                                <button class="btn btn-success" id="setp" style="height: 34px;"><i class="fa fa-check"></i></button>
+                                <button class="btn btn-danger" id="clrp" style="height: 34px;"><i class="fa fa-ban"></i></button>
+                            </span>
+                        </div>
+                        <div class="clearfix"></div>
+                        <div id="tempChart2" style="height: 210px;"></div>
+                        <div class="clearfix"></div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        $tooQuick = false;
+        $extruderTemp = '0';
+        $bedTemp = '0';
+
+        function pad(num, size) {
+            var s = "000" + num;
+            return s.substr(s.length - size);
+        }
+        $(document).ready(function() {
+            var gCodeLog = document.getElementById("gCodeLog");
+            $(".controlBox").addClass('disabledbutton');
+            $("#rawgCode").addClass('disabledbutton');
+
+            setInterval(function() {
+                $.get("inquiry", function(data, status) {
+                    console.log(data);
+                    //                $('#gCodeLog').append('<br>'+data);
+                    $("#rde").text(data.match(/\d+/g)[0]);
+                    //$("#rdeTarget").text(data.match(/\d+/g)[1]);
+                    var exTgt = data.match(/\d+/g)[1];
+                    if (exTgt > 30 || exTgt == 0) $("#rdeTarget").text(exTgt);
+                    $("#rdp").text(data.match(/\d+/g)[2]);
+                    $("#rdpTarget").text(data.match(/\d+/g)[3]);
+                    $extruderTemp = data.match(/\d+/g)[0];
+                    $extruderTarget = data.match(/\d+/g)[1];
+                    $bedTemp = data.match(/\d+/g)[2];
+                    $bedTarget = data.match(/\d+/g)[3];
+                    var c = data.charAt(data.length - 1);
+                    if (c == 'I') {
+                        $("#stat").text("Idle");
+                        $("#pgs").css("width", "0%");
+                        $(".controlBox").removeClass('disabledbutton');
+                        $("#rawgCode").removeClass('disabledbutton');
+                    } else if (c == 'P') {
+                        $(".controlBox").addClass('disabledbutton');
+                        $("#rawgCode").addClass('disabledbutton');
+                        $("#stat").text("Printing");
+                        $("#pgs").css("width", data.match(/\d+/g)[4] + "%");
+                        $("#pgs").html(data.match(/\d+/g)[4] + "%");
+                    } else $("#stat").text(" ");
+                });
+            }, 5000);
+            $("#sete").click(function() {
+                var value = pad($("#wre").val(), 3);
+                $.ajax({
+                    url: 'set?cmd={C:T0' + value + '}',
+                    cache: false
+                }).done(function(html) {});
+            });
+            $("#clre").click(function() {
+                $.ajax({
+                    url: "set?cmd={C:T0000}",
+                    cache: false
+                }).done(function(html) {});
+            });
+            $("#setp").click(function() {
+                var value = pad($("#wrp").val(), 3);
+                $.ajax({
+                    url: 'set?cmd={C:P' + value + '}',
+                    cache: false
+                }).done(function(html) {});
+            });
+            $("#clrp").click(function() {
+                $.ajax({
+                    url: "set?cmd={C:P000}",
+                    cache: false
+                }).done(function(html) {});
+            });
+        });
+        String.prototype.contains = function(it) {
+            return this.indexOf(it) != -1;
+        };
+
+        function start_p() {
+            $.ajax({
+                url: "set?cmd={P:000}",
+                cache: false
+            }).done(function(html) {});
+        }
+
+        function cancel_p() {
+            $.ajax({
+                url: "set?cmd={P:X}",
+                cache: false
+            }).done(function(html) {});
+        }
+
+        $('#sendRAWgCode').click(function() {
+            var gCode2Send = $('#gcode').val();
+            if (gCode2Send == '') {
+                alert("You didn't enter anything!");
+                return;
+            }
+            $.ajax({
+                url: "set?code=" + gCode2Send,
+                cache: false
+            }).done(function(html) {
+                $('#gcode').val('');
+                $('#gCodeLog').append("<br>" + gCode2Send);
+                gCodeLog.scrollTop = gCodeLog.scrollHeight;
+                //            alert('sent!');
+            });
+        });
+
+        $('#eStop').click(function() {
+            $.ajax({
+                url: "set?code=M112",
+                cache: false
+            }).done(function(html) {
+                $('#gCodeLog').append("<br>M112; Emergency Stop!");
+                gCodeLog.scrollTop = gCodeLog.scrollHeight;
+                alert('Emergency Stop Sent! You will have to cycle power on the printer to get communications back up.');
+            });
+
+        });
+
+        function setFan($fSpeed) {
+            $.ajax({
+                url: "set?code=M106 S" + $fSpeed,
+                cache: false
+            }).done(function(html) {
+                $('#gCodeLog').append("<br>M106 S" + $fSpeed);
+                gCodeLog.scrollTop = gCodeLog.scrollHeight;
+            });
+
+        }
+
+        $('.homeIt').click(function() {
+            var doWhat = $(this).data('id');
+            var whatAxis = $(this).data('axis');
+            $.ajax({
+                url: "set?code=G28 " + doWhat,
+                cache: false
+            }).done(function(html) {
+                $('#gCodeLog').append("<br>G28 " + doWhat);
+                gCodeLog.scrollTop = gCodeLog.scrollHeight;
+                if (whatAxis == 'XYZ') {
+                    $('#posX, #posY, #posZ').val('0');
+                    $('#posX, #posY, #posZ').removeClass('unkPos');
+                    $axisX = '0';
+                    $axisY = '0';
+                    $axisZ = '0';
+                } else if (whatAxis == 'XY') {
+                    $('#posX, #posY').val('0');
+                    $('#posX, #posY').removeClass('unkPos');
+                    $axisX = '0';
+                    $axisY = '0';
+                } else {
+                    $('#pos' + whatAxis).val('0');
+                    $('#pos' + whatAxis).removeClass('unkPos');
+                    switch (whatAxis) {
+                        case 'X':
+                            $axisX = '0';
+                            break;
+                        case 'Y':
+                            $axisY = '0';
+                            break;
+                        case 'Z':
+                            $axisZ = '0';
+                            break;
+                    }
+                }
+            });
+        });
+
+        $axisX = '0';
+        $axisY = '0';
+        $axisZ = '0';
+
+        function atMax() {
+            $('#movement').html('<span style="color: #ff0000;">MAX Movement!</span>');
+            setTimeout(function() {
+                $('#movement').html('Movement');
+            }, 500);
+        }
+
+        $('.moveIt').click(function() {
+            if ($tooQuick == true) {
+                $('#movement').html('<span style="color: #ff0000;">SLOW DOWN!</span>');
+                setTimeout(function() {
+                    $('#movement').html('Movement');
+                }, 100);
+                return;
+            }
+            // var doSpeed = $(this).data('speed');
+            var doWhat = $(this).data('id');
+            var doWhere = $(this).data('axis');
+            var axisVal = $('#pos' + doWhere).val()
+            axisVal = +(doWhat/10) + +axisVal;
+
+            switch (doWhere) {
+                case 'X':
+                    $axisX = +$axisX + +doWhat;
+                    if ($axisX >= '125') {
+                        atMax();
+                        $axisX = +$axisX - +doWhat;
+                        return;
+                    }
+                    break;
+                case 'Y':
+                    $axisY = +$axisY + +doWhat;
+                    if ($axisY >= '125') {
+                        atMax();
+                        $axisY = +$axisY - +doWhat;
+                        return;
+                    }
+                    break;
+                case 'Z':
+                    $axisZ = +$axisZ + +doWhat;
+                    if ($axisZ >= '125') {
+                        atMax();
+                        $axisZ = +$axisZ - +doWhat;
+                        return;
+                    }
+                    break;
+                default:
+            }
+
+            $tooQuick = true;
+            $.ajax({
+                url: "set?cmd={J:" + doWhere + doWhat + '}',
+                cache: false
+            }).done(function(html) {
+                $('#pos' + doWhere).val(axisVal);
+                $tooQuick = false;
+                $('#gCodeLog').append("<br>{J:" + doWhere + doWhat + '}');
+                gCodeLog.scrollTop = gCodeLog.scrollHeight;
+            });
+        });
+        $(document).ready(function() {
+            $("#tempChart").appendTo("#newTempChart").show();
+        });
+
+        $(document).ready(function() {
+            $(function() {
+                var data = [];
+                var data2 = [];
+                var totalPoints = 300;
+
+                function getData() {
+                    data = data.slice(1);
+                    while (data.length < totalPoints) {
+                        var x = new Date($.now());
+                        var y = $extruderTemp;
+                        data.push(y);
+                    }
+                    var res = [];
+                    for (var i = 0; i < data.length; ++i) {
+                        res.push([i, data[i]]);
+                    }
+                    return res;
+                }
+
+                function getData2() {
+                    data2 = data2.slice(1);
+                    while (data2.length < totalPoints) {
+                        var x = new Date($.now());
+                        var y = $bedTemp;
+                        data2.push(y);
+                    }
+                    var res2 = [];
+                    for (var i = 0; i < data2.length; ++i) {
+                        res2.push([i, data2[i]]);
+                    }
+                    return res2;
+                }
+
+                // Set up the control widget
+                var updateInterval = 500;
+                var plot = $.plot("#tempChart", [getData()], {
+                    series: {
+                        shadowSize: 0 // Drawing is faster without shadows
+                    },
+                    colors: ['#ff0000'],
+                    yaxis: {
+                        min: 0,
+                        max: 230,
+                        zoomRange: [0.5, 310],
+                        panRange: [0, 300]
+                    },
+                    xaxis: {
+                        show: false,
+                        zoomRange: [0.5, 310],
+                        panRange: [0, 300]
+                    }
+                });
+
+                var plot2 = $.plot("#tempChart2", [getData2()], {
+                    series: {
+                        shadowSize: 0 // Drawing is faster without shadows
+                    },
+                    colors: ['#0037ff'],
+                    yaxis: {
+                        min: 0,
+                        max: 100,
+                        zoomRange: [0.5, 310],
+                        panRange: [0, 300]
+                    },
+                    xaxis: {
+                        show: false,
+                        zoomRange: [0.5, 310],
+                        panRange: [0, 300]
+                    }
+
+                });
+
+                var tempChart = $("#tempChart");
+                var tempChart2 = $("#tempChart2");
+
+                function update() {
+                    plot.setData([getData()]);
+                    plot2.setData([getData2()]);
+                    // Since the axes don't change, we don't need to call plot.setupGrid()
+                    plot.draw();
+                    plot2.draw();
+                    setTimeout(update, updateInterval);
+                }
+
+                update();
+            });
+
+        });
+
+        $(function() {
+            $("#fanSlider").slider({
+                value: 0,
+                min: 0,
+                max: 255,
+                step: 25.5,
+                slide: function(event, ui) {
+                    var fanPercent = ui.value;
+                    setFan(ui.value);
+                    var fanMax = 255;
+                    fanPercent = (fanPercent / fanMax) * 100;
+                    if (fanPercent == '0') {
+                        fanPercent = "Off";
+                    } else {
+                        fanPercent = fanPercent + "%";
+                    }
+                    $("#fanAmount").html(fanPercent);
+                }
+            });
+
+            $("#speedSlider").slider({
+                value: 10,
+                min: 0,
+                max: 20,
+                step: 1,
+                slide: function(event, ui) {
+                    var speedPercent = ui.value;
+                    if(speedPercent < '10') {
+                        speedPercent = '0' + speedPercent;
+                    }
+                    $("#speedAmount").html(ui.value + "0%");
+                    $.ajax({
+                        url: "set?cmd={C:S" + speedPercent + "}",
+                        cache: false
+                    }).done(function(html) {
+                        $('#gCodeLog').append("<br>{C:S" + speedPercent + "}");
+                        gCodeLog.scrollTop = gCodeLog.scrollHeight;
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
