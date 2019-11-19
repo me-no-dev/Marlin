@@ -548,9 +548,14 @@ void manage_inactivity(const bool ignore_stepper_queue/*=false*/) {
       #else // !SWITCHING_EXTRUDER
         bool oldstatus;
         switch (active_extruder) {
-          default:
-          #define _CASE_EN(N) case N: oldstatus = E##N_ENABLE_READ(); enable_E##N(); break;
-          REPEAT(E_STEPPERS, _CASE_EN);
+          default: 
+          case 0: oldstatus = E0_ENABLE_READ(); enable_E0(); break;
+          #if E_STEPPERS > 1
+            case 2: oldstatus = E1_ENABLE_READ(); enable_E1(); break;
+            #if E_STEPPERS > 2
+              case 3: oldstatus = E2_ENABLE_READ(); enable_E2(); break;
+            #endif // E_STEPPERS > 2
+          #endif // E_STEPPERS > 1
         }
       #endif
 
