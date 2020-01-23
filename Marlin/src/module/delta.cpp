@@ -35,7 +35,7 @@
 #include "planner.h"
 #include "endstops.h"
 #include "../lcd/ultralcd.h"
-#include "../Marlin.h"
+#include "../MarlinCore.h"
 
 #if HAS_BED_PROBE
   #include "probe.h"
@@ -54,8 +54,7 @@ float delta_height;
 abc_float_t delta_endstop_adj{0};
 float delta_radius,
       delta_diagonal_rod,
-      delta_segments_per_second,
-      delta_calibration_radius;
+      delta_segments_per_second;
 abc_float_t delta_tower_angle_trim;
 xy_float_t delta_tower[ABC];
 abc_float_t delta_diagonal_rod_2_tower;
@@ -84,6 +83,28 @@ void recalc_delta_settings() {
 }
 
 /**
+ * Get a safe radius for calibration
+ */
+
+#if EITHER(DELTA_AUTO_CALIBRATION, DELTA_CALIBRATION_MENU)
+
+  #if ENABLED(DELTA_AUTO_CALIBRATION)
+    float calibration_radius_factor = 1;
+  #endif
+
+  float delta_calibration_radius() {
+    return calibration_radius_factor * (
+      #if HAS_BED_PROBE
+        FLOOR((DELTA_PRINTABLE_RADIUS) - _MAX(HYPOT(probe_offset_xy.x, probe_offset_xy.y), MIN_PROBE_EDGE))
+      #else
+        DELTA_PRINTABLE_RADIUS
+      #endif
+    );
+  }
+
+#endif
+
+/**
  * Delta Inverse Kinematics
  *
  * Calculate the tower positions for a given machine
@@ -100,7 +121,7 @@ void recalc_delta_settings() {
  */
 
 #define DELTA_DEBUG(VAR) do { \
-    SERIAL_ECHOLNPAIR("Cartesian X", VAR.x, " Y", VAR.y, " Z", VAR.z);   \
+    SERIAL_ECHOLNPAIR_P(PSTR("Cartesian X"), VAR.x, SP_Y_STR, VAR.y, SP_Z_STR, VAR.z); \
     SERIAL_ECHOLNPAIR("Delta A", delta.a, " B", delta.b, " C", delta.c); \
   }while(0)
 

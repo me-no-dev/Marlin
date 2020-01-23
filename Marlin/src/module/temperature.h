@@ -47,23 +47,31 @@
 
 // Identifiers for other heaters
 typedef enum : int8_t {
-  INDEX_NONE = -4,
-  H_REDUNDANT, H_CHAMBER, H_BED,
+  INDEX_NONE = -5,
+  H_PROBE, H_REDUNDANT, H_CHAMBER, H_BED,
   H_E0, H_E1, H_E2, H_E3, H_E4, H_E5
 } heater_ind_t;
 
 // PID storage
 typedef struct { float Kp, Ki, Kd;     } PID_t;
 typedef struct { float Kp, Ki, Kd, Kc; } PIDC_t;
-#if ENABLED(PID_EXTRUSION_SCALING)
-  typedef PIDC_t hotend_pid_t;
-  #if LPQ_MAX_LEN > 255
-    typedef uint16_t lpq_ptr_t;
+typedef struct { float Kp, Ki, Kd, Kf; } PIDF_t;
+typedef struct { float Kp, Ki, Kd, Kc, Kf; } PIDCF_t;
+
+typedef
+  #if BOTH(PID_EXTRUSION_SCALING, PID_FAN_SCALING)
+    PIDCF_t
+  #elif ENABLED(PID_EXTRUSION_SCALING)
+    PIDC_t
+  #elif ENABLED(PID_FAN_SCALING)
+    PIDF_t
   #else
-    typedef uint8_t lpq_ptr_t;
+    PID_t
   #endif
-#else
-  typedef PID_t hotend_pid_t;
+hotend_pid_t;
+
+#if ENABLED(PID_EXTRUSION_SCALING)
+  typedef IF<(LPQ_MAX_LEN > 255), uint16_t, uint8_t>::type lpq_ptr_t;
 #endif
 
 #define DUMMY_PID_VALUE 3000.0f
@@ -76,6 +84,12 @@ typedef struct { float Kp, Ki, Kd, Kc; } PIDC_t;
     #define _PID_Kc(H) Temperature::temp_hotend[H].pid.Kc
   #else
     #define _PID_Kc(H) 1
+  #endif
+
+  #if ENABLED(PID_FAN_SCALING)
+    #define _PID_Kf(H) Temperature::temp_hotend[H].pid.Kf
+  #else
+    #define _PID_Kf(H) 0
   #endif
 #else
   #define _PID_Kp(H) DUMMY_PID_VALUE
@@ -99,6 +113,9 @@ enum ADCSensorState : char {
   #endif
   #if HAS_TEMP_CHAMBER
     PrepareTemp_CHAMBER, MeasureTemp_CHAMBER,
+  #endif
+  #if HAS_TEMP_PROBE
+    PrepareTemp_PROBE, MeasureTemp_PROBE,
   #endif
   #if HAS_TEMP_ADC_1
     PrepareTemp_1, MeasureTemp_1,
@@ -188,6 +205,9 @@ struct PIDHeaterInfo : public HeaterInfo {
     typedef heater_info_t bed_info_t;
   #endif
 #endif
+#if HAS_TEMP_PROBE
+  typedef temp_info_t probe_info_t;
+#endif
 #if HAS_HEATED_CHAMBER
   typedef heater_info_t chamber_info_t;
 #elif HAS_TEMP_CHAMBER
@@ -244,6 +264,9 @@ typedef struct { int16_t raw_min, raw_max, mintemp, maxtemp; } temp_range_t;
     #if ENABLED(HEATER_BED_USER_THERMISTOR)
       CTI_BED,
     #endif
+    #if ENABLED(HEATER_PROBE_USER_THERMISTOR)
+      CTI_PROBE,
+    #endif
     #if ENABLED(HEATER_CHAMBER_USER_THERMISTOR)
       CTI_CHAMBER,
     #endif
@@ -275,11 +298,12 @@ class Temperature {
       #endif
       static hotend_info_t temp_hotend[HOTEND_TEMPS];
     #endif
-
     #if HAS_HEATED_BED
       static bed_info_t temp_bed;
     #endif
-
+    #if HAS_TEMP_PROBE
+      static probe_info_t temp_probe;
+    #endif
     #if HAS_TEMP_CHAMBER
       static chamber_info_t temp_chamber;
     #endif
@@ -287,7 +311,6 @@ class Temperature {
     #if ENABLED(AUTO_POWER_E_FANS)
       static uint8_t autofan_speed[HOTENDS];
     #endif
-
     #if ENABLED(AUTO_POWER_CHAMBER_FAN)
       static uint8_t chamberfan_speed;
     #endif
@@ -452,6 +475,9 @@ class Temperature {
 
     #if HAS_HEATED_BED
       static float analog_to_celsius_bed(const int raw);
+    #endif
+    #if HAS_TEMP_PROBE
+      static float analog_to_celsius_probe(const int raw);
     #endif
     #if HAS_TEMP_CHAMBER
       static float analog_to_celsius_chamber(const int raw);
@@ -648,6 +674,19 @@ class Temperature {
 
     #endif // HAS_HEATED_BED
 
+    #if HAS_TEMP_PROBE
+      #if ENABLED(SHOW_TEMP_ADC_VALUES)
+        FORCE_INLINE static int16_t rawProbeTemp()    { return temp_probe.raw; }
+      #endif
+      FORCE_INLINE static float degProbe()            { return temp_probe.celsius; }
+    #endif
+
+    #if WATCH_PROBE
+      static void start_watching_probe();
+    #else
+      static inline void start_watching_probe() {}
+    #endif
+
     #if HAS_TEMP_CHAMBER
       #if ENABLED(SHOW_TEMP_ADC_VALUES)
         FORCE_INLINE static int16_t rawChamberTemp()    { return temp_chamber.raw; }
@@ -672,7 +711,7 @@ class Temperature {
       static void setTargetChamber(const int16_t celsius) {
         temp_chamber.target =
           #ifdef CHAMBER_MAXTEMP
-            _MIN(celsius, CHAMBER_MAXTEMP)
+            _MIN(celsius, CHAMBER_MAXTEMP - 10)
           #else
             celsius
           #endif

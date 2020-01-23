@@ -39,7 +39,7 @@
 
 #define OV(N) int16_t((N) * (OVERSAMPLENR) * (THERMISTOR_TABLE_SCALE))
 
-#define ANY_THERMISTOR_IS(n) (THERMISTOR_HEATER_0 == n || THERMISTOR_HEATER_1 == n || THERMISTOR_HEATER_2 == n || THERMISTOR_HEATER_3 == n || THERMISTOR_HEATER_4 == n || THERMISTOR_HEATER_5 == n || THERMISTORBED == n || THERMISTORCHAMBER == n)
+#define ANY_THERMISTOR_IS(n) (THERMISTOR_HEATER_0 == n || THERMISTOR_HEATER_1 == n || THERMISTOR_HEATER_2 == n || THERMISTOR_HEATER_3 == n || THERMISTOR_HEATER_4 == n || THERMISTOR_HEATER_5 == n || THERMISTORBED == n || THERMISTORCHAMBER == n || THERMISTORPROBE == n)
 
 // Pt1000 and Pt100 handling
 //
@@ -147,8 +147,11 @@
 #if ANY_THERMISTOR_IS(201) // Pt100 with LMV324 Overlord
   #include "thermistor_201.h"
 #endif
-#if ANY_THERMISTOR_IS(331) // Like table 1, but with 3V3 as input voltage
+#if ANY_THERMISTOR_IS(331) // Like table 1, but with 3V3 as input voltage for MEGA
   #include "thermistor_331.h"
+#endif
+#if ANY_THERMISTOR_IS(332) // Like table 1, but with 3V3 as input voltage for DUE
+  #include "thermistor_332.h"
 #endif
 #if ANY_THERMISTOR_IS(666) // beta25 = UNK, R25 = 200K, Pull-up = 10 kOhm, "Unidentified 200K NTC thermistor (Einstart S)"
   #include "thermistor_666.h"
@@ -249,13 +252,20 @@
 #else
   #define CHAMBER_TEMPTABLE_LEN 0
 #endif
+#ifdef THERMISTORPROBE
+  #define PROBE_TEMPTABLE TT_NAME(THERMISTORPROBE)
+  #define PROBE_TEMPTABLE_LEN COUNT(PROBE_TEMPTABLE)
+#else
+  #define PROBE_TEMPTABLE_LEN 0
+#endif
 
 // The SCAN_THERMISTOR_TABLE macro needs alteration?
 static_assert(
      HEATER_0_TEMPTABLE_LEN < 256 && HEATER_1_TEMPTABLE_LEN < 256
   && HEATER_2_TEMPTABLE_LEN < 256 && HEATER_3_TEMPTABLE_LEN < 256
   && HEATER_4_TEMPTABLE_LEN < 256 && HEATER_5_TEMPTABLE_LEN < 256
-  &&      BED_TEMPTABLE_LEN < 256 &&  CHAMBER_TEMPTABLE_LEN < 256,
+  &&      BED_TEMPTABLE_LEN < 256 &&  CHAMBER_TEMPTABLE_LEN < 256
+  &&    PROBE_TEMPTABLE_LEN < 256,
   "Temperature conversion tables over 255 entries need special consideration."
 );
 

@@ -54,6 +54,11 @@
   #undef SHOW_TEMP_ADC_VALUES
 #endif
 
+// Multiple Z steppers
+#ifndef NUM_Z_STEPPER_DRIVERS
+  #define NUM_Z_STEPPER_DRIVERS 1
+#endif
+
 #define HAS_CUTTER EITHER(SPINDLE_FEATURE, LASER_FEATURE)
 
 #if !defined(__AVR__) || !defined(USBCON)
@@ -129,7 +134,7 @@
 #endif
 
 // Extensible UI pin mapping for RepRapDiscount
-#define TOUCH_UI_ULTIPANEL ENABLED(LULZBOT_TOUCH_UI) && ANY(AO_EXP1_PINMAP, AO_EXP2_PINMAP, CR10_TFT_PINMAP)
+#define TOUCH_UI_ULTIPANEL ENABLED(TOUCH_UI_FTDI_EVE) && ANY(AO_EXP1_PINMAP, AO_EXP2_PINMAP, CR10_TFT_PINMAP)
 
 // Poll-based jogging for joystick and other devices
 #if ENABLED(JOYSTICK)
