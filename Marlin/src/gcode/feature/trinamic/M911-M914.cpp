@@ -1,6 +1,6 @@
 /**
  * Marlin 3D Printer Firmware
- * Copyright (c) 2019 MarlinFirmware [https://github.com/MarlinFirmware/Marlin]
+ * Copyright (c) 2020 MarlinFirmware [https://github.com/MarlinFirmware/Marlin]
  *
  * Based on Sprinter and grbl.
  * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
@@ -16,13 +16,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 
 #include "../../../inc/MarlinConfig.h"
 
-#if HAS_TRINAMIC
+#if HAS_TRINAMIC_CONFIG
 
 #include "../../gcode.h"
 #include "../../../feature/tmc_util.h"
@@ -38,7 +38,7 @@
   #define M91x_SOME_X (M91x_USE(X) || M91x_USE(X2))
   #define M91x_SOME_Y (M91x_USE(Y) || M91x_USE(Y2))
   #define M91x_SOME_Z (M91x_USE(Z) || M91x_USE(Z2) || M91x_USE(Z3) || M91x_USE(Z4))
-  #define M91x_SOME_E (M91x_USE_E(0) || M91x_USE_E(1) || M91x_USE_E(2) || M91x_USE_E(3) || M91x_USE_E(4) || M91x_USE_E(5))
+  #define M91x_SOME_E (M91x_USE_E(0) || M91x_USE_E(1) || M91x_USE_E(2) || M91x_USE_E(3) || M91x_USE_E(4) || M91x_USE_E(5) || M91x_USE_E(6) || M91x_USE_E(7))
 
   #if !M91x_SOME_X && !M91x_SOME_Y && !M91x_SOME_Z && !M91x_SOME_E
     #error "MONITOR_DRIVER_STATUS requires at least one TMC2130, 2160, 2208, 2209, 2660, 5130, or 5160."
@@ -90,6 +90,12 @@
     #endif
     #if M91x_USE_E(5)
       tmc_report_otpw(stepperE5);
+    #endif
+    #if M91x_USE_E(6)
+      tmc_report_otpw(stepperE6);
+    #endif
+    #if M91x_USE_E(7)
+      tmc_report_otpw(stepperE7);
     #endif
   }
 
@@ -188,6 +194,12 @@
       #if M91x_USE_E(5)
         if (hasNone || eval == 5 || (hasE && eval < 0)) tmc_clear_otpw(stepperE5);
       #endif
+      #if M91x_USE_E(6)
+        if (hasNone || eval == 6 || (hasE && eval < 0)) tmc_clear_otpw(stepperE6);
+      #endif
+      #if M91x_USE_E(7)
+        if (hasNone || eval == 7 || (hasE && eval < 0)) tmc_clear_otpw(stepperE7);
+      #endif
     #endif
   }
 
@@ -263,6 +275,12 @@
               #if E_STEPPERS > 5 && AXIS_HAS_STEALTHCHOP(E5)
                 case 5: TMC_SET_PWMTHRS_E(5); break;
               #endif
+              #if E_STEPPERS > 6 && AXIS_HAS_STEALTHCHOP(E6)
+                case 6: TMC_SET_PWMTHRS_E(6); break;
+              #endif
+              #if E_STEPPERS > 7 && AXIS_HAS_STEALTHCHOP(E7)
+                case 7: TMC_SET_PWMTHRS_E(7); break;
+              #endif
             }
           #endif // E_STEPPERS
         } break;
@@ -312,6 +330,12 @@
       #if E_STEPPERS > 5 && AXIS_HAS_STEALTHCHOP(E5)
         TMC_SAY_PWMTHRS_E(5);
       #endif
+      #if E_STEPPERS > 6 && AXIS_HAS_STEALTHCHOP(E6)
+        TMC_SAY_PWMTHRS_E(6);
+      #endif
+      #if E_STEPPERS > 7 && AXIS_HAS_STEALTHCHOP(E7)
+        TMC_SAY_PWMTHRS_E(7);
+      #endif
     }
   }
 #endif // HYBRID_THRESHOLD
@@ -324,7 +348,7 @@
 
     bool report = true;
     const uint8_t index = parser.byteval('I');
-    LOOP_XYZ(i) if (parser.seen(axis_codes[i])) {
+    LOOP_XYZ(i) if (parser.seen(XYZ_CHAR(i))) {
       const int16_t value = parser.value_int();
       report = false;
       switch (i) {
@@ -402,4 +426,4 @@
   }
 #endif // USE_SENSORLESS
 
-#endif // HAS_TRINAMIC
+#endif // HAS_TRINAMIC_CONFIG
