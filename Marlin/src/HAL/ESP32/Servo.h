@@ -46,4 +46,10 @@ private:
   int channel;
   int pin;
   int degrees;
+  uint16_t servo_delay;
+  rmt_obj_t* rmt;
+  rmt_data_t pulse;
+#if ENABLED(DEACTIVATE_SERVOS_AFTER_MOVE)
+  rmt_data_t pulses[64];
+#endif
 };

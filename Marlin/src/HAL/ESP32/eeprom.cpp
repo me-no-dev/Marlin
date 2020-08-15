@@ -26,32 +26,80 @@
 #if ENABLED(EEPROM_SETTINGS)
 
 #include "../shared/eeprom_api.h"
-#include <EEPROM.h>
 
-#ifndef MARLIN_EEPROM_SIZE
-  #define MARLIN_EEPROM_SIZE 0x1000 // 4KB
-#endif
-size_t PersistentStore::capacity()    { return MARLIN_EEPROM_SIZE; }
+#include <SPIFFS.h>
+#include <FS.h>
+#include "spiffs.h"
 
-bool PersistentStore::access_start()  { return EEPROM.begin(MARLIN_EEPROM_SIZE); }
-bool PersistentStore::access_finish() { EEPROM.end(); return true; }
+static const size_t HAL_ESP32_EEPROM_SIZE = 4096;
+#define HAL_ESP32_EEPROM_FILE_PATH "/eeprom.dat"
+
+File eeprom_file;
+
+bool PersistentStore::access_start() {
+  if (spiffs_initialized) {
+    eeprom_file = SPIFFS.open(HAL_ESP32_EEPROM_FILE_PATH, "r+");
+
+    size_t file_size = eeprom_file.size();
+    if (file_size < HAL_ESP32_EEPROM_SIZE) {
+      SERIAL_ECHO_MSG("SPIFFS EEPROM settings file " HAL_ESP32_EEPROM_FILE_PATH " is too small or did not exist, expanding.");
+      SERIAL_ECHO_START(); SERIAL_ECHOLNPAIR(" file size: ", file_size, ", required size: ", HAL_ESP32_EEPROM_SIZE);
+
+      // mode r+ does not allow to expand the file (at least on ESP32 SPIFFS9, so we close, reopen "a", append, close, reopen "r+"
+      eeprom_file.close();
+
+      eeprom_file = SPIFFS.open(HAL_ESP32_EEPROM_FILE_PATH, "a");
+      for (size_t i = eeprom_file.size(); i < HAL_ESP32_EEPROM_SIZE; i++)
+        eeprom_file.write(0xFF);
+      eeprom_file.close();
+
+      eeprom_file = SPIFFS.open(HAL_ESP32_EEPROM_FILE_PATH, "r+");
+      file_size = eeprom_file.size();
+      if (file_size < HAL_ESP32_EEPROM_SIZE) {
+        SERIAL_ERROR_MSG("Failed to expand " HAL_ESP32_EEPROM_FILE_PATH " to required size. SPIFFS partition full?");
+        SERIAL_ERROR_START(); SERIAL_ECHOLNPAIR(" file size: ", file_size, ", required size: ", HAL_ESP32_EEPROM_SIZE);
+        SERIAL_ERROR_START(); SERIAL_ECHOLNPAIR(" SPIFFS used bytes: ", SPIFFS.usedBytes(), ", total bytes: ", SPIFFS.totalBytes());
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+bool PersistentStore::access_finish() {
+  eeprom_file.close();
+  return true;
+}
 
 bool PersistentStore::write_data(int &pos, const uint8_t *value, size_t size, uint16_t *crc) {
-  for (size_t i = 0; i < size; i++) {
-    EEPROM.write(pos++, value[i]);
-    crc16(crc, &value[i], 1);
-  }
+  if (!eeprom_file.seek(pos)) return true; // return true for any error
+  if (eeprom_file.write(value, size) != size) return true;
+
+  crc16(crc, value, size);
+  pos += size;
+
   return false;
 }
 
 bool PersistentStore::read_data(int &pos, uint8_t* value, size_t size, uint16_t *crc, const bool writing/*=true*/) {
-  for (size_t i = 0; i < size; i++) {
-    uint8_t c = EEPROM.read(pos++);
-    if (writing) value[i] = c;
-    crc16(crc, &c, 1);
+  if (!eeprom_file.seek(pos)) return true; // return true for any error
+
+  if (writing) {
+    if (eeprom_file.read(value, size) != size) return true;
+    crc16(crc, value, size);
   }
+  else {
+    uint8_t tmp[size];
+    if (eeprom_file.read(tmp, size) != size) return true;
+    crc16(crc, tmp, size);
+  }
+
+  pos += size;
+
   return false;
 }
+
+size_t PersistentStore::capacity() { return HAL_ESP32_EEPROM_SIZE; }
 
 #endif // EEPROM_SETTINGS
 #endif // ARDUINO_ARCH_ESP32

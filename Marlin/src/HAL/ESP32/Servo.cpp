@@ -27,42 +27,87 @@
 
 #include "Servo.h"
 
-// Adjacent channels (0/1, 2/3 etc.) share the same timer and therefore the same frequency and resolution settings on ESP32,
-// so we only allocate servo channels up high to avoid side effects with regards to analogWrite (fans, leds, laser pwm etc.)
-int Servo::channel_next_free = 12;
+int Servo::channel_next_free = 0;
 
 Servo::Servo() {
-  channel = channel_next_free++;
+    this->channel = channel_next_free++;
+    this->pin = -1;
+    this->degrees = 0;
+    this->servo_delay = 0;
+    this->rmt = NULL;
+    this->pulse.val = 0;
+#if ENABLED(DEACTIVATE_SERVOS_AFTER_MOVE)
+    for (uint8_t i=0; i<64; i++) {
+        this->pulses[i].val = this->pulse.val;
+    }
+#endif
 }
 
-int8_t Servo::attach(const int inPin) {
-  if (channel >= CHANNEL_MAX_NUM) return -1;
-  if (inPin > 0) pin = inPin;
-
-  ledcSetup(channel, 50, 16); // channel X, 50 Hz, 16-bit depth
-  ledcAttachPin(pin, channel);
-  return true;
+int8_t Servo::attach(const int pin) {
+    constexpr uint16_t servo_delays[] = SERVO_DELAY;
+    static_assert(COUNT(servo_delays) == NUM_SERVOS, "SERVO_DELAY must be an array NUM_SERVOS long.");
+    if (this->channel >= NUM_SERVOS) {
+        return -1;
+    }
+    if (this->pin < 0 && pin >= 0) {
+        this->pin = pin;
+    }
+    if (this->pin < 0) {
+        return -1;
+    }
+    if (this->rmt == NULL) {
+        this->servo_delay = servo_delays[this->channel];
+        this->rmt = rmtInit(this->pin, true, RMT_MEM_64);
+        if (this->rmt == NULL) {
+            return -1;
+        }
+        rmtSetTick(this->rmt, 1000);
+    }
+    return pin;
 }
 
-void Servo::detach() { ledcDetachPin(pin); }
+void Servo::detach() {
+    if (this->pin < 0 && this->rmt == NULL) {
+        return;
+    }
+    uint32_t v = 0;
+    rmtWrite(this->rmt, (rmt_data_t*)&v, 1);
+}
 
-int Servo::read() { return degrees; }
+int Servo::read() {
+    return this->degrees;
+}
 
 void Servo::write(int inDegrees) {
-  degrees = constrain(inDegrees, MIN_ANGLE, MAX_ANGLE);
-  int us = map(degrees, MIN_ANGLE, MAX_ANGLE, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
-  int duty = map(us, 0, TAU_USEC, 0, MAX_COMPARE);
-  ledcWrite(channel, duty);
+    if (this->pin < 0 && this->rmt == NULL) {
+        return;
+    }
+    this->degrees = constrain(inDegrees, MIN_ANGLE, MAX_ANGLE);
+    int us = map(this->degrees, MIN_ANGLE, MAX_ANGLE, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
+    if (us != this->pulse.duration0) {
+        this->pulse.duration0 = us;
+        this->pulse.level0 = 1;
+        this->pulse.duration1 = 20000 - us;
+        this->pulse.level1 = 0;
+#if ENABLED(DEACTIVATE_SERVOS_AFTER_MOVE)
+        for (uint8_t i=0; i<64; i++) {
+            this->pulses[i].val = this->pulse.val;
+        }
+#endif
+    }
+#if ENABLED(DEACTIVATE_SERVOS_AFTER_MOVE)
+    rmtWrite(this->rmt, this->pulses, min((this->servo_delay/20), 64));
+#else
+    rmtLoop(this->rmt, &this->pulse, 1);
+#endif
 }
 
 void Servo::move(const int value) {
-  constexpr uint16_t servo_delay[] = SERVO_DELAY;
-  static_assert(COUNT(servo_delay) == NUM_SERVOS, "SERVO_DELAY must be an array NUM_SERVOS long.");
-  if (attach(0) >= 0) {
-    write(value);
-    safe_delay(servo_delay[channel]);
-    TERN_(DEACTIVATE_SERVOS_AFTER_MOVE, detach());
-  }
+    if (this->pin < 0 && this->rmt == NULL) {
+        return;
+    }
+    this->write(value);
+    safe_delay(this->servo_delay);
 }
 #endif // HAS_SERVOS
 

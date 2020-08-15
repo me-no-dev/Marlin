@@ -75,7 +75,7 @@ void spiInit(uint8_t spiRate) {
   }
 
   spiConfig = SPISettings(clock, MSBFIRST, SPI_MODE0);
-  SPI.begin();
+  SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN);
 }
 
 uint8_t spiRec() {

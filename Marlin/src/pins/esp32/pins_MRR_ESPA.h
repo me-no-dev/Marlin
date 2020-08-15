@@ -95,11 +95,16 @@
 //
 // MicroSD card
 //
-#define MOSI_PIN                              23
-#define MISO_PIN                              19
-#define SCK_PIN                               18
 #define SDSS                                   5
 #define USES_SHARED_SPI                           // SPI is shared by SD card with TMC SPI drivers
+
+//
+// SPI pins
+//
+#define SS_PIN                                 SDSS
+#define SCK_PIN                                18
+#define MISO_PIN                               19
+#define MOSI_PIN                               23
 
 // Hardware serial pins
 // Add the following to Configuration.h or Configuration_adv.h to assign

@@ -82,8 +82,15 @@
 #define FAN_PIN                                0  // 2//15//13 (D9)
 #define HEATER_BED_PIN                        15  // 15//0 //(D10)
 
-// SPI
+//
+// SPI pins
+//
+#define SS_PIN                                 SDSS
+#define SCK_PIN                                18
+#define MISO_PIN                               19
+#define MOSI_PIN                               23
 #define SDSS                                   5
+
 #define I2S_STEPPER_STREAM
 #define I2S_WS                                23
 #define I2S_BCK                               22

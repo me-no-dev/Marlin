@@ -624,6 +624,10 @@
   #include "esp32/pins_MRR_ESPE.h"              // ESP32                                  env:esp32
 #elif MB(E4D_BOX)
   #include "esp32/pins_E4D.h"                   // ESP32                                  env:esp32
+#elif MB(PICO_3D)
+  #include "esp32/pins_PICO_3D.h"                   // ESP32                                  env:esp32
+#elif MB(PICO_V3D)
+  #include "esp32/pins_PICO_V3D.h"                   // ESP32                                  env:esp32
 
 //
 // Adafruit Grand Central M4 (SAMD51 ARM Cortex-M4)

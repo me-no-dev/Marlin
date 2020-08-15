@@ -22,12 +22,15 @@
 #ifdef ARDUINO_ARCH_ESP32
 
 #include "../../inc/MarlinConfigPre.h"
+#include "../../pins/pins.h"
+
+#ifdef I2S_DATA
 
 #include "i2s.h"
 
 #include "../shared/Marduino.h"
 #include <driver/periph_ctrl.h>
-#include <rom/lldesc.h>
+#include <esp32/rom/lldesc.h>
 #include <soc/i2s_struct.h>
 #include <freertos/queue.h>
 #include "../../module/stepper.h"
@@ -339,5 +342,5 @@ uint8_t i2s_state(uint8_t pin) {
 void i2s_push_sample() {
   dma.current[dma.rw_pos++] = i2s_port_data;
 }
-
+#endif // I2S_DATA
 #endif // ARDUINO_ARCH_ESP32

@@ -44,7 +44,11 @@ static timg_dev_t *TG[2] = {&TIMERG0, &TIMERG1};
 const tTimerConfig TimerConfig [NUM_HARDWARE_TIMERS] = {
   { TIMER_GROUP_0, TIMER_0, STEPPER_TIMER_PRESCALE, stepTC_Handler }, // 0 - Stepper
   { TIMER_GROUP_0, TIMER_1,    TEMP_TIMER_PRESCALE, tempTC_Handler }, // 1 - Temperature
+#ifdef I2S_DATA
   { TIMER_GROUP_1, TIMER_0,     PWM_TIMER_PRESCALE, pwmTC_Handler  }, // 2 - PWM
+#else
+  { TIMER_GROUP_1, TIMER_0,                      1, nullptr  }, // 2 - PWM
+#endif
   { TIMER_GROUP_1, TIMER_1,                      1, nullptr }, // 3
 };
 
@@ -81,7 +85,35 @@ void IRAM_ATTR timer_isr(void *para) {
  * @param timer_num timer number to initialize
  * @param frequency frequency of the timer
  */
+#ifdef TIMER_ISR_ON_CORE
+typedef union {
+        struct {
+                uint32_t timer_num:2;
+                uint32_t frequency:30;
+        };
+        uint32_t value;
+} timer_start_vars_t;
+
+static void _HAL_timer_start(const uint8_t timer_num, uint32_t frequency);
+
+static void timer_start_task(void *pvParameters){
+    timer_start_vars_t vars;
+    vars.value = (uint32_t)pvParameters;
+    _HAL_timer_start(vars.timer_num, vars.frequency);
+    vTaskDelete(NULL);
+}
+
 void HAL_timer_start(const uint8_t timer_num, uint32_t frequency) {
+    timer_start_vars_t vars;
+    vars.timer_num = timer_num;
+    vars.frequency = frequency;
+    xTaskCreatePinnedToCore(timer_start_task, "marlin_timer", 4096, (void*)vars.value, 10, NULL, TIMER_ISR_ON_CORE);
+}
+
+static void _HAL_timer_start(const uint8_t timer_num, uint32_t frequency) {
+#else
+void HAL_timer_start(const uint8_t timer_num, uint32_t frequency) {
+#endif
   const tTimerConfig timer = TimerConfig[timer_num];
 
   timer_config_t config;
@@ -90,7 +122,7 @@ void HAL_timer_start(const uint8_t timer_num, uint32_t frequency) {
   config.counter_en  = TIMER_PAUSE;
   config.alarm_en    = TIMER_ALARM_EN;
   config.intr_type   = TIMER_INTR_LEVEL;
-  config.auto_reload = true;
+  config.auto_reload = TIMER_AUTORELOAD_EN;
 
   // Select and initialize the timer
   timer_init(timer.group, timer.idx, &config);

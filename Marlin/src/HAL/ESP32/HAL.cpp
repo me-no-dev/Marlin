@@ -23,7 +23,7 @@
 
 #include "../../inc/MarlinConfig.h"
 
-#include <rom/rtc.h>
+#include <esp32/rom/rtc.h>
 #include <driver/adc.h>
 #include <esp_adc_cal.h>
 #include <HardwareSerial.h>
@@ -38,13 +38,15 @@
     #include "spiffs.h"
     #include "web.h"
   #endif
+#elif ENABLED(EEPROM_SETTINGS)
+  #include "spiffs.h"
 #endif
 
 // ------------------------
 // Externs
 // ------------------------
 
-portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
+//portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 // ------------------------
 // Local defines
@@ -86,7 +88,11 @@ volatile int numPWMUsed = 0,
 
 #endif
 
-void HAL_init() { i2s_init(); }
+void HAL_init() {
+#ifdef I2S_DATA
+    i2s_init();
+#endif
+}
 
 void HAL_init_board() {
 
@@ -100,6 +106,8 @@ void HAL_init_board() {
       web_init();
     #endif
     server.begin();
+  #elif ENABLED(EEPROM_SETTINGS)
+    spiffs_init();
   #endif
 
   // ESP32 uses a GPIO matrix that allows pins to be assigned to hardware serial ports.
@@ -143,18 +151,18 @@ int freeMemory() { return ESP.getFreeHeap(); }
 // ------------------------
 // ADC
 // ------------------------
-#define ADC1_CHANNEL(pin) ADC1_GPIO ## pin ## _CHANNEL
 
 adc1_channel_t get_channel(int pin) {
-  switch (pin) {
-    case 39: return ADC1_CHANNEL(39);
-    case 36: return ADC1_CHANNEL(36);
-    case 35: return ADC1_CHANNEL(35);
-    case 34: return ADC1_CHANNEL(34);
-    case 33: return ADC1_CHANNEL(33);
-    case 32: return ADC1_CHANNEL(32);
-  }
-  return ADC1_CHANNEL_MAX;
+    switch (pin) {
+      case 39: return ADC1_CHANNEL_3;
+      case 36: return ADC1_CHANNEL_0;
+      case 35: return ADC1_CHANNEL_7;
+      case 34: return ADC1_CHANNEL_6;
+      case 33: return ADC1_CHANNEL_5;
+      case 32: return ADC1_CHANNEL_4;
+      default: break;
+    }
+    return ADC1_CHANNEL_MAX;
 }
 
 void adc1_set_attenuation(adc1_channel_t chan, adc_atten_t atten) {
@@ -227,6 +235,7 @@ void analogWrite(pin_t pin, int value) {
     ledcWrite(pin_to_channel[pin], value);
     return;
   }
+#ifdef I2S_DATA
 
   int idx = -1;
 
@@ -250,8 +259,10 @@ void analogWrite(pin_t pin, int value) {
 
   // Use 7bit internal value - add 1 to have 100% high at 255
   pwmValues[idx] = (value + 1) / 2;
+#endif
 }
 
+#ifdef I2S_DATA
 // Handle PWM timer interrupt
 HAL_PWM_TIMER_ISR() {
   HAL_timer_isr_prologue(PWM_TIMER_NUM);
@@ -270,5 +281,6 @@ HAL_PWM_TIMER_ISR() {
 
   HAL_timer_isr_epilogue(PWM_TIMER_NUM);
 }
+#endif // I2S_DATA
 
 #endif // ARDUINO_ARCH_ESP32

@@ -48,8 +48,6 @@
 // Defines
 // ------------------------
 
-extern portMUX_TYPE spinlock;
-
 #define MYSERIAL0 flushableSerial
 
 #if EITHER(WIFISUPPORT, ESP3D_WIFISUPPORT)
@@ -63,11 +61,12 @@ extern portMUX_TYPE spinlock;
   #define NUM_SERIAL 1
 #endif
 
-#define CRITICAL_SECTION_START() portENTER_CRITICAL(&spinlock)
-#define CRITICAL_SECTION_END()   portEXIT_CRITICAL(&spinlock)
-#define ISRS_ENABLED() (spinlock.owner == portMUX_FREE_VAL)
-#define ENABLE_ISRS()  if (spinlock.owner != portMUX_FREE_VAL) portEXIT_CRITICAL(&spinlock)
-#define DISABLE_ISRS() portENTER_CRITICAL(&spinlock)
+//extern portMUX_TYPE spinlock;
+#define CRITICAL_SECTION_START() //portENTER_CRITICAL(&spinlock)
+#define CRITICAL_SECTION_END()   //portEXIT_CRITICAL(&spinlock)
+#define ISRS_ENABLED() true//(spinlock.spinlock.owner == portMUX_FREE_VAL)
+#define ENABLE_ISRS()  //if (spinlock.spinlock.owner != portMUX_FREE_VAL) portEXIT_CRITICAL(&spinlock)
+#define DISABLE_ISRS() //portENTER_CRITICAL(&spinlock)
 
 // Fix bug in pgm_read_ptr
 #undef pgm_read_ptr

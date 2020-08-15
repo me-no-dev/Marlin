@@ -360,6 +360,8 @@
 #define BOARD_MRR_ESPA                6001  // MRR ESPA board based on ESP32 (native pins only)
 #define BOARD_MRR_ESPE                6002  // MRR ESPE board based on ESP32 (with I2S stepper stream)
 #define BOARD_E4D_BOX                 6003  // E4d@BOX
+#define BOARD_PICO_3D                 6004  // PICO-D4 based board with TMC2209
+#define BOARD_PICO_V3D                6005  // PICO-V3 based board with TMC2209
 
 //
 // SAMD51 ARM Cortex M4

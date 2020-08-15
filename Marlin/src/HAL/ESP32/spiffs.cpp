@@ -23,7 +23,7 @@
 
 #include "../../inc/MarlinConfigPre.h"
 
-#if BOTH(WIFISUPPORT, WEBSUPPORT)
+#if BOTH(WIFISUPPORT, WEBSUPPORT) || ENABLED(EEPROM_SETTINGS)
 
 #include "../../core/serial.h"
 
