@@ -56,7 +56,19 @@ const tTimerConfig TimerConfig [NUM_HARDWARE_TIMERS] = {
 // Public functions
 // ------------------------
 
+static xSemaphoreHandle temperature_sem = NULL;
+
+static void temperature_task(void *pvParameters) {
+  for (;;) {
+    if (xSemaphoreTake(temperature_sem, portMAX_DELAY) == pdPASS) {
+       tempTC_Handler();
+    }
+  }
+  vTaskDelete(NULL);
+}
+
 void IRAM_ATTR timer_isr(void *para) {
+  BaseType_t xHigherPriorityTaskWoken = 0;
   const tTimerConfig& timer = TimerConfig[(int)para];
 
   // Retrieve the interrupt status and the counter value
@@ -73,11 +85,19 @@ void IRAM_ATTR timer_isr(void *para) {
     }
   }
 
-  timer.fn();
+  if ((int)para == 1) {
+    xSemaphoreGiveFromISR(temperature_sem, &xHigherPriorityTaskWoken);
+  } else {
+    timer.fn();
+  }
 
   // After the alarm has been triggered
   // Enable it again so it gets triggered the next time
   TG[timer.group]->hw_timer[timer.idx].config.alarm_en = TIMER_ALARM_EN;
+  
+  if (xHigherPriorityTaskWoken) {
+    portYIELD_FROM_ISR();
+  }
 }
 
 /**
@@ -87,27 +107,27 @@ void IRAM_ATTR timer_isr(void *para) {
  */
 #ifdef TIMER_ISR_ON_CORE
 typedef union {
-        struct {
-                uint32_t timer_num:2;
-                uint32_t frequency:30;
-        };
-        uint32_t value;
+  struct {
+    uint32_t timer_num:2;
+    uint32_t frequency:30;
+  };
+  uint32_t value;
 } timer_start_vars_t;
 
 static void _HAL_timer_start(const uint8_t timer_num, uint32_t frequency);
 
 static void timer_start_task(void *pvParameters){
-    timer_start_vars_t vars;
-    vars.value = (uint32_t)pvParameters;
-    _HAL_timer_start(vars.timer_num, vars.frequency);
-    vTaskDelete(NULL);
+  timer_start_vars_t vars;
+  vars.value = (uint32_t)pvParameters;
+  _HAL_timer_start(vars.timer_num, vars.frequency);
+  vTaskDelete(NULL);
 }
 
 void HAL_timer_start(const uint8_t timer_num, uint32_t frequency) {
-    timer_start_vars_t vars;
-    vars.timer_num = timer_num;
-    vars.frequency = frequency;
-    xTaskCreatePinnedToCore(timer_start_task, "marlin_timer", 4096, (void*)vars.value, 10, NULL, TIMER_ISR_ON_CORE);
+  timer_start_vars_t vars;
+  vars.timer_num = timer_num;
+  vars.frequency = frequency;
+  xTaskCreatePinnedToCore(timer_start_task, "marlin_timer", 4096, (void*)vars.value, 10, NULL, TIMER_ISR_ON_CORE);
 }
 
 static void _HAL_timer_start(const uint8_t timer_num, uint32_t frequency) {
@@ -115,6 +135,13 @@ static void _HAL_timer_start(const uint8_t timer_num, uint32_t frequency) {
 void HAL_timer_start(const uint8_t timer_num, uint32_t frequency) {
 #endif
   const tTimerConfig timer = TimerConfig[timer_num];
+
+  if (timer_num == 1 && temperature_sem == NULL) {
+    temperature_sem = xSemaphoreCreateBinary();
+    if (temperature_sem != NULL) {
+      xTaskCreatePinnedToCore(temperature_task, "temperature", 4096, (void*)&timer, 10, NULL, ARDUINO_RUNNING_CORE);
+    }
+  }
 
   timer_config_t config;
   config.divider     = timer.divider;
